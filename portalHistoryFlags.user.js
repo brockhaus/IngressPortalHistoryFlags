@@ -2,10 +2,10 @@
 // @id portalHistoryFlags
 // @name IITC Plugin: Portal History Flags
 // @category Layer
-// @version 0.0.2
-// @namespace	https://github.com/EisFrei/IngressPortalHistoryFlags
-// @downloadURL	https://github.com/EisFrei/IngressPortalHistoryFlags/raw/master/portalHistoryFlags.user.js
-// @homepageURL	https://github.com/EisFrei/IngressPortalHistoryFlags
+// @version 0.0.3
+// @namespace	https://github.com/brockhaus/IngressPortalHistoryFlags
+// @downloadURL	https://github.com/brockhaus/IngressPortalHistoryFlags/raw/master/portalHistoryFlags.user.js
+// @homepageURL	https://github.com/brockhaus/IngressPortalHistoryFlags
 // @description Shows Visited/Captured/Scouted status above portal markers
 // @author EisFrei
 // @include		https://intel.ingress.com/*
@@ -65,7 +65,21 @@ function wrapper(plugin_info) {
 	}
 
 	thisPlugin.toggleDisplayMode = function () {
-		thisPlugin.settings.drawMissing = !thisPlugin.settings.drawMissing;
+		// round robin switch
+		let clickAnchor = document.getElementById(plugin_info.pluginId + '_mode');
+		if (!thisPlugin.settings.drawMissing && thisPlugin.settings.drawScouter) {
+			thisPlugin.settings.drawMissing = true;
+			thisPlugin.settings.drawScouter = true;
+		}
+		else if (thisPlugin.settings.drawMissing && thisPlugin.settings.drawScouter){
+			thisPlugin.settings.drawMissing = true;
+			thisPlugin.settings.drawScouter = false;
+		}
+		else {
+			thisPlugin.settings.drawMissing = false;
+			thisPlugin.settings.drawScouter = true;
+		}
+		clickAnchor.innerHTML = 'History Mode ' + getCurrentMode();
 		localStorage[KEY_SETTINGS] = JSON.stringify(thisPlugin.settings);
 		drawAllFlags();
 	}
@@ -77,6 +91,7 @@ function wrapper(plugin_info) {
 		}*/
 
 		const drawMissing = thisPlugin.settings.drawMissing;
+		const drawScouter = thisPlugin.settings.drawScouter;
 		portal._historyLayer = new L.LayerGroup();
 		if (drawMissing && !portal.options.data.agentVisited || !drawMissing && portal.options.data.agentVisited) {
 			L.marker(portal._latlng, {
@@ -93,11 +108,13 @@ function wrapper(plugin_info) {
 			}).addTo(portal._historyLayer);
 		}
 		if (drawMissing && !portal.options.data.agentScouted || !drawMissing && portal.options.data.agentScouted) {
-			L.marker(portal._latlng, {
-				icon: thisPlugin.iconScouted,
-				interactive: false,
-				keyboard: false,
-			}).addTo(portal._historyLayer);
+			if (drawScouter) {
+				L.marker(portal._latlng, {
+					icon: thisPlugin.iconScouted,
+					interactive: false,
+					keyboard: false,
+				}).addTo(portal._historyLayer);
+			}
 		}
 		portal._historyLayer.addTo(thisPlugin.layerGroup);
 	}
@@ -108,6 +125,12 @@ function wrapper(plugin_info) {
 			drawPortalFlags(window.portals[id]);
 		}
 	}
+	function getCurrentMode() {
+		let mode = '[N]';
+		if (!thisPlugin.settings.drawScouter) mode = '[M-S]';
+		else if (thisPlugin.settings.drawMissing) mode = '[M]';
+		return mode;
+	}
 
 	function setup() {
 		try {
@@ -115,7 +138,17 @@ function wrapper(plugin_info) {
 		} catch (e) {
 			thisPlugin.settings = {
 				drawMissing: false,
+				drawScouter: true,
 			};
+		}
+		// Add drawSouter setting
+		let drawScouter = true;
+		try {
+			drawScouter = thisPlugin.settings.drawScouter;
+		}
+		catch (e) {
+			thisPlugin.settings.drawScouter = true;
+			localStorage[KEY_SETTINGS] = JSON.stringify(thisPlugin.settings);
 		}
 
 		thisPlugin.iconVisited = svgToIcon('<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><circle fill="#9538ff" cx="50" cy="50" r="50"/></svg>', 15);
@@ -127,7 +160,9 @@ function wrapper(plugin_info) {
 
 		window.addHook('portalAdded', thisPlugin.addToPortalMap);
 		window.addHook('portalRemoved', thisPlugin.removePortalFromMap);
-		$('#toolbox').append('<a onclick="window.plugin.PortalHistoryFlags.toggleDisplayMode()">History mode</a>');
+		
+		let mode = getCurrentMode();
+		$('#toolbox').append('<a id="' + plugin_info.pluginId + '_mode" onclick="window.plugin.PortalHistoryFlags.toggleDisplayMode()">History Mode ' + mode + '</a>');
 	}
 	setup.info = plugin_info; //add the script info data to the function as a property
 	// if IITC has already booted, immediately run the 'setup' function
