@@ -2,7 +2,7 @@
 // @id portalHistoryFlags
 // @name IITC Plugin: Portal History Flags
 // @category Layer
-// @version 0.0.5
+// @version 0.0.6
 // @namespace	https://github.com/brockhaus/IngressPortalHistoryFlags
 // @downloadURL	https://github.com/brockhaus/IngressPortalHistoryFlags/raw/main/portalHistoryFlags.user.js
 // @homepageURL	https://github.com/brockhaus/IngressPortalHistoryFlags
@@ -130,6 +130,8 @@ function wrapper(plugin_info) {
 
 	thisPlugin.highlighter = {
 		highlight: function(data) {
+
+			if (!thisPlugin.isHighlightActive) return;
 
 			if (data.portal.options.ent.length === 3 && data.portal.options.ent[2].length >= 19 && data.portal.options.ent[2][18] > 0) {
 				data.portal.options.data.agentVisited = (data.portal.options.ent[2][18] & 0b1) === 1;
