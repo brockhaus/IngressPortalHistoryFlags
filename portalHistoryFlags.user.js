@@ -2,7 +2,7 @@
 // @id portalHistoryFlags
 // @name IITC Plugin: Portal History Flags
 // @category Layer
-// @version 0.0.6
+// @version 0.0.7
 // @namespace	https://github.com/brockhaus/IngressPortalHistoryFlags
 // @downloadURL	https://github.com/brockhaus/IngressPortalHistoryFlags/raw/main/portalHistoryFlags.user.js
 // @homepageURL	https://github.com/brockhaus/IngressPortalHistoryFlags
@@ -133,6 +133,7 @@ function wrapper(plugin_info) {
 
 			if (!thisPlugin.isHighlightActive) return;
 
+			let portalLoaded = data.portal.options.ent.length === 3 && data.portal.options.ent[2].length > 4;
 			if (data.portal.options.ent.length === 3 && data.portal.options.ent[2].length >= 19 && data.portal.options.ent[2][18] > 0) {
 				data.portal.options.data.agentVisited = (data.portal.options.ent[2][18] & 0b1) === 1;
 				data.portal.options.data.agentCaptured = (data.portal.options.ent[2][18] & 0b10) === 2;
@@ -141,17 +142,19 @@ function wrapper(plugin_info) {
 
 			var style = {};
 	
-			if (data.portal.options.data.agentCaptured) {
-				// captured (and, implied, visited too) - no highlights
+			if (portalLoaded) {
+				if (data.portal.options.data.agentCaptured) {
+					// captured (and, implied, visited too) - no highlights
 
-			} else if (data.portal.options.data.agentVisited) {
-				style.fillColor = 'yellow';
-				style.fillOpacity = 0.6;
-			} else {
-				// we have an 'uniqueInfo' entry for the portal, but it's not set visited or captured?
-				// could be used to flag a portal you don't plan to visit, so use a less opaque red
-				style.fillColor = 'red';
-				style.fillOpacity = 0.5;
+				} else if (data.portal.options.data.agentVisited) {
+					style.fillColor = 'yellow';
+					style.fillOpacity = 0.6;
+				} else {
+					// we have an 'uniqueInfo' entry for the portal, but it's not set visited or captured?
+					// could be used to flag a portal you don't plan to visit, so use a less opaque red
+					style.fillColor = 'red';
+					style.fillOpacity = 0.5;
+				}
 			}
 	
 			data.portal.setStyle(style);
