@@ -2,7 +2,7 @@
 // @id portalHistoryFlags
 // @name IITC Plugin: Portal History Flags
 // @category Layer
-// @version 0.0.3
+// @version 0.0.4
 // @namespace	https://github.com/brockhaus/IngressPortalHistoryFlags
 // @downloadURL	https://github.com/brockhaus/IngressPortalHistoryFlags/raw/master/portalHistoryFlags.user.js
 // @homepageURL	https://github.com/brockhaus/IngressPortalHistoryFlags
@@ -67,7 +67,12 @@ function wrapper(plugin_info) {
 	thisPlugin.toggleDisplayMode = function () {
 		// round robin switch
 		let clickAnchor = document.getElementById(plugin_info.pluginId + '_mode');
-		if (!thisPlugin.settings.drawMissing && thisPlugin.settings.drawScouter) {
+		if (thisPlugin.settings.highLighter) {
+			thisPlugin.settings.highLighter = false;
+			thisPlugin.settings.drawMissing = false;
+			thisPlugin.settings.drawScouter = true;
+		}
+		else if (!thisPlugin.settings.drawMissing && thisPlugin.settings.drawScouter) {
 			thisPlugin.settings.drawMissing = true;
 			thisPlugin.settings.drawScouter = true;
 		}
@@ -76,6 +81,7 @@ function wrapper(plugin_info) {
 			thisPlugin.settings.drawScouter = false;
 		}
 		else {
+			thisPlugin.settings.highLighter = true;
 			thisPlugin.settings.drawMissing = false;
 			thisPlugin.settings.drawScouter = true;
 		}
@@ -92,33 +98,68 @@ function wrapper(plugin_info) {
 
 		const drawMissing = thisPlugin.settings.drawMissing;
 		const drawScouter = thisPlugin.settings.drawScouter;
+		const highLighter = thisPlugin.settings.highLighter;
 		portal._historyLayer = new L.LayerGroup();
-		if (drawMissing && !portal.options.data.agentVisited || !drawMissing && portal.options.data.agentVisited) {
-			L.marker(portal._latlng, {
-				icon: thisPlugin.iconVisited,
-				interactive: false,
-				keyboard: false,
-			}).addTo(portal._historyLayer);
-		}
-		if (drawMissing && !portal.options.data.agentCaptured || !drawMissing && portal.options.data.agentCaptured) {
-			L.marker(portal._latlng, {
-				icon: thisPlugin.iconCaptured,
-				interactive: false,
-				keyboard: false,
-			}).addTo(portal._historyLayer);
-		}
-		if (drawMissing && !portal.options.data.agentScouted || !drawMissing && portal.options.data.agentScouted) {
-			if (drawScouter) {
+		if (!highLighter) {
+			if (drawMissing && !portal.options.data.agentVisited || !drawMissing && portal.options.data.agentVisited) {
 				L.marker(portal._latlng, {
-					icon: thisPlugin.iconScouted,
+					icon: thisPlugin.iconVisited,
 					interactive: false,
 					keyboard: false,
 				}).addTo(portal._historyLayer);
+			}
+			if (drawMissing && !portal.options.data.agentCaptured || !drawMissing && portal.options.data.agentCaptured) {
+				L.marker(portal._latlng, {
+					icon: thisPlugin.iconCaptured,
+					interactive: false,
+					keyboard: false,
+				}).addTo(portal._historyLayer);
+			}
+			if (drawMissing && !portal.options.data.agentScouted || !drawMissing && portal.options.data.agentScouted) {
+				if (drawScouter) {
+					L.marker(portal._latlng, {
+						icon: thisPlugin.iconScouted,
+						interactive: false,
+						keyboard: false,
+					}).addTo(portal._historyLayer);
+				}
 			}
 		}
 		portal._historyLayer.addTo(thisPlugin.layerGroup);
 	}
 
+	thisPlugin.highlighter = {
+		highlight: function(data) {
+
+			if (data.portal.options.ent.length === 3 && data.portal.options.ent[2].length >= 19 && data.portal.options.ent[2][18] > 0) {
+				data.portal.options.data.agentVisited = (data.portal.options.ent[2][18] & 0b1) === 1;
+				data.portal.options.data.agentCaptured = (data.portal.options.ent[2][18] & 0b10) === 2;
+				data.portal.options.data.agentScouted = (data.portal.options.ent[2][18] & 0b100) === 4;
+			}
+
+			var style = {};
+	
+			if (data.portal.options.data.agentCaptured) {
+				// captured (and, implied, visited too) - no highlights
+
+			} else if (data.portal.options.data.agentVisited) {
+				style.fillColor = 'yellow';
+				style.fillOpacity = 0.6;
+			} else {
+				// we have an 'uniqueInfo' entry for the portal, but it's not set visited or captured?
+				// could be used to flag a portal you don't plan to visit, so use a less opaque red
+				style.fillColor = 'red';
+				style.fillOpacity = 0.5;
+			}
+	
+			data.portal.setStyle(style);
+		},
+	
+		setSelected: function(active) {
+			thisPlugin.isHighlightActive = active;
+		}
+	}
+	
 	function drawAllFlags() {
 		thisPlugin.layerGroup.clearLayers();
 		for (let id in window.portals) {
@@ -127,27 +168,25 @@ function wrapper(plugin_info) {
 	}
 	function getCurrentMode() {
 		let mode = '[N]';
-		if (!thisPlugin.settings.drawScouter) mode = '[M-S]';
+		if (thisPlugin.settings.highLighter)  mode = '[H]';
+		else if (!thisPlugin.settings.drawScouter) mode = '[M-S]';
 		else if (thisPlugin.settings.drawMissing) mode = '[M]';
 		return mode;
 	}
 
 	function setup() {
+		let drawScouter = true;
+		let highLighter = false;
 		try {
 			thisPlugin.settings = JSON.parse(localStorage[KEY_SETTINGS]);
+			drawScouter = thisPlugin.settings.drawScouter;
+			highLighter = thisPlugin.settings.highLighter;
 		} catch (e) {
 			thisPlugin.settings = {
 				drawMissing: false,
-				drawScouter: true,
+				drawScouter: drawScouter,
+				highLighter: highLighter,
 			};
-		}
-		// Add drawSouter setting
-		let drawScouter = true;
-		try {
-			drawScouter = thisPlugin.settings.drawScouter;
-		}
-		catch (e) {
-			thisPlugin.settings.drawScouter = true;
 			localStorage[KEY_SETTINGS] = JSON.stringify(thisPlugin.settings);
 		}
 
@@ -160,6 +199,7 @@ function wrapper(plugin_info) {
 
 		window.addHook('portalAdded', thisPlugin.addToPortalMap);
 		window.addHook('portalRemoved', thisPlugin.removePortalFromMap);
+		window.addPortalHighlighter('Portal History', thisPlugin.highlighter);
 		
 		let mode = getCurrentMode();
 		$('#toolbox').append('<a id="' + plugin_info.pluginId + '_mode" onclick="window.plugin.PortalHistoryFlags.toggleDisplayMode()">History Mode ' + mode + '</a>');
