@@ -2,7 +2,7 @@
 // @id portalHistoryFlags
 // @name IITC Plugin: Portal History Flags
 // @category Layer
-// @version 0.0.7
+// @version 0.0.8
 // @namespace	https://github.com/brockhaus/IngressPortalHistoryFlags
 // @downloadURL	https://github.com/brockhaus/IngressPortalHistoryFlags/raw/main/portalHistoryFlags.user.js
 // @homepageURL	https://github.com/brockhaus/IngressPortalHistoryFlags
@@ -148,12 +148,12 @@ function wrapper(plugin_info) {
 
 				} else if (data.portal.options.data.agentVisited) {
 					style.fillColor = 'yellow';
-					style.fillOpacity = 0.6;
+					style.fillOpacity = 0.8;
 				} else {
 					// we have an 'uniqueInfo' entry for the portal, but it's not set visited or captured?
 					// could be used to flag a portal you don't plan to visit, so use a less opaque red
 					style.fillColor = 'red';
-					style.fillOpacity = 0.5;
+					style.fillOpacity = 0.8;
 				}
 			}
 	
